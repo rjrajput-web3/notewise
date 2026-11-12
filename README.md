@@ -49,8 +49,20 @@ Other Firebase products used:
 
 - **App Check** — debug token in dev (`src/firebase.js`); a reCAPTCHA
   Enterprise site key can be supplied via `VITE_APPCHECK_SITE_KEY`.
+  Production ships with NO App Check provider unless that key is set, so
+  App Check enforcement for the Firebase AI Logic API must be OFF in the
+  console (Firebase console → App Check → APIs → Firebase AI Logic API →
+  "Not enforced"). If enforcement is ON with no provider configured, every
+  AI call fails with 401 "Firebase App Check token is invalid" and the app
+  falls back to demo mode — this happened in production on 2026-11-13 and
+  is a console setting, not a code bug. (Enforcing App Check instead is the
+  stronger option: create a reCAPTCHA Enterprise site key, allowlist the
+  Vercel domain, set `VITE_APPCHECK_SITE_KEY`, redeploy.)
 - **Firestore** — notes are mirrored to the `notes` collection when available.
-- **Authentication** — anonymous sign-in, best-effort.
+- **Authentication** — anonymous sign-in, best-effort. If the footer says
+  "Auth: unavailable", enable the Anonymous provider in the console
+  (Authentication → Sign-in method → Anonymous → Enable). The app keeps
+  working on local storage without it.
 
 ## Demo mode (honest fallback)
 

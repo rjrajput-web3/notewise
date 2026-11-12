@@ -221,6 +221,20 @@ export class AIService {
 
   _describeError(err) {
     const msg = (err && (err.message || err.code || String(err))) || "Unknown error";
+    // App Check 401: enforcement is ON for the AI Logic API in the console,
+    // but this app ships with NO App Check provider in production (no
+    // reCAPTCHA site key configured — see src/firebase.js). The backend
+    // rejects every call until enforcement is turned off or a site key is
+    // added. This is a console setting, not a code bug — say so plainly.
+    if (/app[- ]?check|401/i.test(msg)) {
+      return (
+        "Firebase AI Logic rejected the request (App Check): enforcement is ON for this project, " +
+        "but the app has no App Check provider configured in production. " +
+        "Fix in the Firebase console: App Check → APIs → Firebase AI Logic API → set enforcement to 'Not enforced' " +
+        "(or create a reCAPTCHA Enterprise site key and set VITE_APPCHECK_SITE_KEY). " +
+        "Original error: " + msg
+      );
+    }
     // AI Logic not yet enabled in the console surfaces as a 403 / failed-precondition.
     if (/403|permission|not enabled|failed-precondition|API has not been used/i.test(msg)) {
       return (

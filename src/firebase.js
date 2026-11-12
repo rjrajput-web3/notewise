@@ -26,6 +26,16 @@ export function initFirebase() {
 
   // App Check: debug token in dev so AI Logic calls are accepted without a
   // reCAPTCHA site key. A site key can be supplied via env for production.
+  //
+  // PRODUCTION POSTURE (read before changing): this build ships with NO
+  // App Check provider unless VITE_APPCHECK_SITE_KEY is set. That is safe
+  // ONLY if App Check enforcement for the Firebase AI Logic API is OFF in
+  // the Firebase console (App Check → APIs → Firebase AI Logic API →
+  // "Not enforced"). If enforcement is ON with no provider configured,
+  // every AI call fails with 401 "Firebase App Check token is invalid"
+  // and the app falls back to demo mode — that is exactly what happened
+  // in production on 2026-11-13. The debug token is dev-only by design:
+  // it must never be used in production.
   try {
     const siteKey = import.meta.env.VITE_APPCHECK_SITE_KEY;
     if (siteKey) {

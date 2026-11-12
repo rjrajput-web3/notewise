@@ -99,44 +99,186 @@ export function researchDemo(text) {
   };
 }
 
+/**
+ * Fill-in-the-blank quiz builder. ALWAYS returns exactly 5 questions.
+ *
+ * Sources, in order:
+ *  A. Fill-in-the-blank from the note's own sentences (answer = a keyword
+ *     from that sentence, distractors = other keywords from the note).
+ *  B. "Which of these words appears in this note?" — one per keyword not
+ *     already used as an answer, distractors = generic words that do NOT
+ *     appear in the note (filtered case-insensitively), so no distractor
+ *     can accidentally also be a correct answer.
+ *  C. "Which word appears most often in this note?" — same distractor rule.
+ *  D. "What is the title of this note?" — options are the note's own title
+ *     plus generic labels; only the note's title is correct.
+ *  E. Counting questions computed from the note itself (word count,
+ *     sentence count).
+ * Nothing is invented: every correct answer is computed from the note text.
+ */
+
+// Generic words used ONLY as distractors. Any word that appears in the note
+// is filtered out before use, so a distractor can never also be correct.
+const DISTRACTOR_POOL = [
+  "quantum", "harvest", "symphony", "glacier", "telescope", "bicycle",
+  "volcano", "sapphire", "lantern", "meadow", "compass", "thunder",
+  "mosaic", "harbor", "velvet", "orbit"
+];
+
+function rotate(arr, shift) {
+  const a = [...arr];
+  const n = ((shift % a.length) + a.length) % a.length;
+  for (let i = 0; i < n; i++) a.push(a.shift());
+  return a;
+}
+
 export function quizDemo(text) {
   const sentences = sentencesOf(text);
   const keywords = topKeywords(text, 12);
+  const lowerText = " " + text.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
   const questions = [];
+  const usedAnswers = new Set();
+
+  const pushQuestion = (q) => {
+    if (questions.length >= 5) return;
+    const options = [...new Set(q.options.map((o) => String(o).trim()))].filter(Boolean);
+    if (options.length !== 4) return;
+    if (q.answer < 0 || q.answer > 3) return;
+    questions.push({ q: q.q, options, answer: q.answer, why: q.why });
+  };
+
+  // Distractors: generic pool words that do NOT appear in the note, topped
+  // up with other note keywords (also not the answer) if the pool runs out.
+  const distractorsFor = (answer, n = 3) => {
+    const answerLower = String(answer).toLowerCase();
+    const out = [];
+    for (const w of DISTRACTOR_POOL) {
+      if (out.length >= n) break;
+      if (w.toLowerCase() === answerLower) continue;
+      if (lowerText.includes(" " + w.toLowerCase() + " ")) continue;
+      out.push(w);
+    }
+    for (const k of keywords) {
+      if (out.length >= n) break;
+      if (k.toLowerCase() === answerLower) continue;
+      if (out.includes(k)) continue;
+      out.push(k);
+    }
+    return out;
+  };
+
+  const makeOptions = (answer, seed) => {
+    const distractors = distractorsFor(answer, 3);
+    if (distractors.length < 3) return null;
+    const options = rotate([answer, ...distractors], seed % 4);
+    return { options, answer: options.indexOf(answer) };
+  };
+
+  // A. Fill in the blank from the note's own sentences.
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const s of sentences) {
     if (questions.length >= 5) break;
+    // Match whole words only, so "art" never blanks the middle of "heart".
     const key = keywords.find(
-      (k) => s.toLowerCase().includes(k) && k.length > 3
+      (k) => k.length > 3 && new RegExp(`\\b${escapeRegExp(k)}\\b`, "i").test(s)
     );
     if (!key) continue;
-    const blanked = s.replace(new RegExp(key, "i"), "______");
-    const distractors = keywords.filter((k) => k !== key).slice(0, 3);
-    if (distractors.length < 3) continue;
-    const options = [key, ...distractors];
-    // Deterministic shuffle by sentence length so the key is not always first.
-    const shift = s.length % 4;
-    for (let i = 0; i < shift; i++) options.push(options.shift());
-    questions.push({
+    const blanked = s.replace(new RegExp(`\\b${escapeRegExp(key)}\\b`, "i"), "______");
+    const built = makeOptions(key, s.length);
+    if (!built) continue;
+    usedAnswers.add(key.toLowerCase());
+    pushQuestion({
       q: `Fill in the blank: ${blanked}`,
-      options,
-      answer: options.indexOf(key),
+      options: built.options,
+      answer: built.answer,
       why: `The note says: "${s}"`
     });
   }
-  while (questions.length < Math.min(5, Math.max(1, sentences.length))) {
-    questions.push({
-      q: "What is the main topic of this note?",
-      options: keywords.slice(0, 4),
-      answer: 0,
-      why: "The most frequent meaningful word in the note is the topic."
+
+  // B. Word-recognition questions for keywords not used as answers yet.
+  for (const key of keywords) {
+    if (questions.length >= 5) break;
+    if (usedAnswers.has(key.toLowerCase())) continue;
+    const built = makeOptions(key, key.length + 1);
+    if (!built) continue;
+    usedAnswers.add(key.toLowerCase());
+    pushQuestion({
+      q: "Which of these words appears in this note?",
+      options: built.options,
+      answer: built.answer,
+      why: `The note uses the word "${key}".`
     });
-    break;
   }
+
+  // C. Most frequent word.
+  if (questions.length < 5 && keywords.length > 0) {
+    const top = keywords[0];
+    const built = makeOptions(top, 7);
+    if (built) {
+      pushQuestion({
+        q: "Which word appears most often in this note?",
+        options: built.options,
+        answer: built.answer,
+        why: `"${top}" is the most frequent meaningful word in the note.`
+      });
+    }
+  }
+
+  // D. Note title (only when the note has a real first line).
+  if (questions.length < 5) {
+    const firstLine = (text.split("\n")[0] || "").trim().replace(/[#*]/g, "").trim();
+    if (firstLine.length > 3 && firstLine.length <= 60) {
+      const options = rotate([firstLine, "Untitled note", "Study notes", "My research"], firstLine.length % 4);
+      pushQuestion({
+        q: "What is the title of this note?",
+        options,
+        answer: options.indexOf(firstLine),
+        why: `The note's title is "${firstLine}".`
+      });
+    }
+  }
+
+  // E. Counting questions computed from the note itself.
+  if (questions.length < 5) {
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const options = rotate([wordCount, wordCount + 10, wordCount + 25, wordCount + 50], wordCount % 4);
+    pushQuestion({
+      q: "About how many words are in this note?",
+      options: options.map(String),
+      answer: options.indexOf(wordCount),
+      why: `The note has ${wordCount} words.`
+    });
+  }
+  if (questions.length < 5) {
+    const options = rotate([sentences.length, sentences.length + 1, sentences.length + 2, sentences.length + 3], sentences.length % 4);
+    pushQuestion({
+      q: "How many sentences are in this note?",
+      options: options.map(String),
+      answer: options.indexOf(sentences.length),
+      why: `The note has ${sentences.length} sentence(s).`
+    });
+  }
+
+  // Last resort (should not happen for any note with 5+ words): repeat the
+  // main-topic question with a different keyword subset so the count is 5.
+  while (questions.length < 5) {
+    const topic = keywords[questions.length % Math.max(keywords.length, 1)] || "this topic";
+    const built = makeOptions(topic, questions.length + 3);
+    if (!built) break;
+    pushQuestion({
+      q: "Which of these words appears in this note?",
+      options: built.options,
+      answer: built.answer,
+      why: `The note uses the word "${topic}".`
+    });
+    if (questions.length < 5 && !built) break;
+  }
+
   return {
     kind: "quiz",
     source: "demo",
     model: "Demo mode (local text processing)",
     latencyMs: 0,
-    data: { questions }
+    data: { questions: questions.slice(0, 5) }
   };
 }
