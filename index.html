@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Notewise — offline-first smart notes. Gemini Nano on-device summarizes your notes instantly; cloud Gemini turns them into research briefs and quizzes. Built with Firebase AI Logic hybrid inference."
+    />
+    <title>Notewise — Smart notes, on-device &amp; in the cloud</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234285F4'/%3E%3Ctext x='16' y='22' font-size='17' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">N</span>
+          <div>
+            <h1>Notewise</h1>
+            <p class="tagline">Smart notes — on-device &amp; in the cloud</p>
+          </div>
+        </div>
+        <div class="status" id="engine-status" title="Which AI engine is answering right now">
+          <span class="dot" id="engine-dot"></span>
+          <span id="engine-label">Starting…</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="notes-panel">
+          <div class="panel-head">
+            <h2>Your notes</h2>
+            <button id="new-note-btn" class="btn btn-primary btn-small">+ New note</button>
+          </div>
+          <p class="hint">Notes are stored on this device. Sign in with a Firebase project configured to sync them to Firestore.</p>
+          <ul id="notes-list" class="notes-list"></ul>
+        </aside>
+
+        <section class="editor-panel">
+          <input
+            id="note-title"
+            class="note-title-input"
+            type="text"
+            placeholder="Note title — leave blank and Nano will suggest one"
+            autocomplete="off"
+          />
+          <textarea
+            id="note-body"
+            class="note-body-input"
+            placeholder="Paste a lecture, an article, meeting notes… anything. Then let Nano summarize it on-device, or send it to the cloud for a deep research brief and a quiz."
+            spellcheck="true"
+          ></textarea>
+          <div class="editor-actions">
+            <button id="save-note-btn" class="btn btn-primary">Save note</button>
+            <button id="delete-note-btn" class="btn btn-ghost">Delete</button>
+            <span id="save-state" class="save-state"></span>
+          </div>
+
+          <div class="ai-panel">
+            <h2>AI, your way</h2>
+            <p class="ai-intro">
+              <strong>On-device</strong> runs on Gemini Nano in this browser — fast, private, works
+              offline. <strong>Cloud</strong> uses Gemini in the cloud for deeper work. The badge on
+              each result shows exactly where it ran.
+            </p>
+            <div class="ai-actions">
+              <div class="ai-action">
+                <button id="summarize-btn" class="btn btn-device">✦ Summarize on-device</button>
+                <p>2–3 sentence summary, auto-title &amp; tags. Runs on Gemini Nano.</p>
+              </div>
+              <div class="ai-action">
+                <button id="research-btn" class="btn btn-cloud">☁ Deep research</button>
+                <p>Structured research brief: key ideas, background, open questions.</p>
+              </div>
+              <div class="ai-action">
+                <button id="quiz-btn" class="btn btn-cloud">? Quiz me</button>
+                <p>5 multiple-choice questions from this note, with answers.</p>
+              </div>
+            </div>
+            <div id="ai-output" class="ai-output" aria-live="polite">
+              <p class="ai-empty">Pick a note, then run one of the AI actions above. Results appear here.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>
+          Built with <strong>Firebase AI Logic</strong> hybrid inference — Gemini Nano on-device,
+          Gemini in the cloud. <span id="mode-note"></span>
+        </p>
+        <p class="footer-sub">
+          Notewise is an original project by Rohit Rajput, built for #BuildHybridAI 2026. MIT licensed.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
