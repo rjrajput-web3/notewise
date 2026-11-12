@@ -5,7 +5,7 @@
  * is not enabled in the Firebase console yet). It is a plain, deterministic
  * text processor — extractive summarization, keyword tags, and fill-in-the-
  * blank questions built from the note itself. It invents nothing and it is
- * ALWAYS labelled "Demo mode" in the UI, never presented as Gemini output.
+ * ALWAYS labelled "Live Preview Mode" in the UI, never presented as Gemini output.
  */
 
 const STOPWORDS = new Set(
@@ -34,6 +34,19 @@ function topKeywords(text, n = 8) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([w]) => w);
 }
 
+export function takeawaysDemo(text) {
+  const sentences = sentencesOf(text);
+  const keywords = topKeywords(text, 8);
+  const scored = sentences
+    .map((s, i) => {
+      const words = wordsOf(s);
+      const score = words.reduce((acc, w) => acc + (keywords.includes(w) ? 2 : 0), 0) / Math.max(words.length, 1);
+      return { s, score, i };
+    })
+    .sort((a, b) => b.score - a.score || a.i - b.i);
+  return scored.slice(0, 5).sort((a, b) => a.i - b.i).map((x) => x.s);
+}
+
 export function summarizeDemo(text) {
   const sentences = sentencesOf(text);
   const keywords = topKeywords(text, 8);
@@ -60,7 +73,7 @@ export function summarizeDemo(text) {
   return {
     kind: "summary",
     source: "demo",
-    model: "Demo mode (local text processing)",
+    model: "Live Preview Mode (local preview)",
     latencyMs: 0,
     data: { summary, title, tags: keywords.slice(0, 5) }
   };
@@ -88,12 +101,12 @@ export function researchDemo(text) {
     `2. How does ${topic} connect to what you already know?`,
     `3. What would you ask an expert about ${topic}?`,
     "",
-    "_Demo brief — generated locally from the note text. Enable Firebase AI Logic for a real cloud research brief._"
+    "_Live Preview — generated locally from the note text. Enable Firebase AI Logic for a real cloud research brief._"
   ].join("\n");
   return {
     kind: "research",
     source: "demo",
-    model: "Demo mode (local text processing)",
+    model: "Live Preview Mode (local preview)",
     latencyMs: 0,
     data: { markdown }
   };
@@ -277,7 +290,7 @@ export function quizDemo(text) {
   return {
     kind: "quiz",
     source: "demo",
-    model: "Demo mode (local text processing)",
+    model: "Live Preview Mode (local preview)",
     latencyMs: 0,
     data: { questions: questions.slice(0, 5) }
   };

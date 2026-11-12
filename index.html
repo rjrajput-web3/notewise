@@ -5,95 +5,279 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Notewise — offline-first smart notes. Gemini Nano on-device summarizes your notes instantly; cloud Gemini turns them into research briefs and quizzes. Built with Firebase AI Logic hybrid inference."
+      content="Notewise turns messy lecture notes, research papers and meeting transcripts into structured summaries, key takeaways and flashcards — on-device with Gemini Nano, in the cloud with Gemini, through Firebase AI Logic."
     />
-    <title>Notewise — Smart notes, on-device &amp; in the cloud</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234285F4'/%3E%3Ctext x='16' y='22' font-size='17' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E" />
+    <meta property="og:title" content="Notewise — Turn messy notes into structured knowledge" />
+    <meta
+      property="og:description"
+      content="Smart notes, on-device & in the cloud. Summaries, takeaways and flashcards from your raw notes — powered by Firebase AI Logic."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://notewiseapp.vercel.app/" />
+    <meta property="og:image" content="https://notewiseapp.vercel.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Notewise — Turn messy notes into structured knowledge" />
+    <meta
+      name="twitter:description"
+      content="Smart notes, on-device & in the cloud. Summaries, takeaways and flashcards from your raw notes — powered by Firebase AI Logic."
+    />
+    <meta name="theme-color" content="#07080F" />
+    <title>Notewise — Turn messy notes into structured knowledge</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
   </head>
   <body>
-    <div id="app">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark">N</span>
-          <div>
-            <h1>Notewise</h1>
-            <p class="tagline">Smart notes — on-device &amp; in the cloud</p>
-          </div>
-        </div>
+    <div class="bg-orbs" aria-hidden="true"></div>
+
+    <header class="nav">
+      <a class="brand" href="#top" aria-label="Notewise home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="40" height="40" role="img" aria-label="Notewise logo">
+            <defs>
+              <linearGradient id="nw-g-nav" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#8B5CF6" />
+                <stop offset="0.55" stop-color="#6366F1" />
+                <stop offset="1" stop-color="#22D3EE" />
+              </linearGradient>
+            </defs>
+            <rect width="48" height="48" rx="12" fill="url(#nw-g-nav)" />
+            <path d="M14 11h14l7 7v19a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2z" fill="#ffffff" opacity="0.96" />
+            <path d="M28 11l7 7h-7z" fill="#C7D2FE" />
+            <path d="M19.5 21.5l9 3.5M28.5 25l-9 5.5" stroke="#8B5CF6" stroke-width="1.6" stroke-linecap="round" opacity="0.65" fill="none" />
+            <circle cx="19.5" cy="21.5" r="2.3" fill="#7C3AED" />
+            <circle cx="28.5" cy="25" r="2.3" fill="#0891B2" />
+            <circle cx="19.5" cy="30.5" r="2.3" fill="#6366F1" />
+            <path d="M32.5 12.5l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" fill="#F59E0B" />
+          </svg>
+        </span>
+        <span class="brand-word">Note<span class="brand-wise">wise</span></span>
+      </a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#features">Features</a>
+        <a href="#presets">Samples</a>
+        <a href="#workspace">Workspace</a>
+      </nav>
+      <div class="nav-right">
         <div class="status" id="engine-status" title="Which AI engine is answering right now">
           <span class="dot" id="engine-dot"></span>
           <span id="engine-label">Starting…</span>
         </div>
-      </header>
+        <a class="btn btn-primary btn-small" href="#workspace">Launch Workspace</a>
+      </div>
+    </header>
 
-      <main class="layout">
-        <aside class="notes-panel">
-          <div class="panel-head">
-            <h2>Your notes</h2>
-            <button id="new-note-btn" class="btn btn-primary btn-small">+ New note</button>
+    <main id="top">
+      <!-- ============ HERO ============ -->
+      <section class="hero">
+        <canvas id="hero-canvas" aria-hidden="true"></canvas>
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-inner">
+          <p class="hero-badge reveal">✦ Firebase AI Logic · Gemini Nano on-device + Gemini in the cloud</p>
+          <h1 class="reveal">Turn messy notes into <span class="grad">structured knowledge.</span></h1>
+          <p class="hero-sub reveal">
+            Notewise reads your raw lectures, papers and meeting transcripts — and turns them into
+            summaries, key takeaways and flashcards. On-device first, cloud when it matters,
+            and it never breaks mid-demo.
+          </p>
+          <div class="hero-ctas reveal">
+            <a class="btn btn-primary btn-lg" href="#workspace">Launch Live Workspace →</a>
+            <button class="btn btn-glass btn-lg" id="hero-sample-btn" type="button">Try Instant Sample</button>
           </div>
-          <p class="hint">Notes are stored on this device. Sign in with a Firebase project configured to sync them to Firestore.</p>
-          <ul id="notes-list" class="notes-list"></ul>
-        </aside>
+          <p class="hero-trust reveal">Free forever · No account needed · Notes stay on your device · Open source (MIT)</p>
 
-        <section class="editor-panel">
-          <input
-            id="note-title"
-            class="note-title-input"
-            type="text"
-            placeholder="Note title — leave blank and Nano will suggest one"
-            autocomplete="off"
-          />
-          <textarea
-            id="note-body"
-            class="note-body-input"
-            placeholder="Paste a lecture, an article, meeting notes… anything. Then let Nano summarize it on-device, or send it to the cloud for a deep research brief and a quiz."
-            spellcheck="true"
-          ></textarea>
-          <div class="editor-actions">
-            <button id="save-note-btn" class="btn btn-primary">Save note</button>
-            <button id="delete-note-btn" class="btn btn-ghost">Delete</button>
-            <span id="save-state" class="save-state"></span>
-          </div>
-
-          <div class="ai-panel">
-            <h2>AI, your way</h2>
-            <p class="ai-intro">
-              <strong>On-device</strong> runs on Gemini Nano in this browser — fast, private, works
-              offline. <strong>Cloud</strong> uses Gemini in the cloud for deeper work. The badge on
-              each result shows exactly where it ran.
-            </p>
-            <div class="ai-actions">
-              <div class="ai-action">
-                <button id="summarize-btn" class="btn btn-device">✦ Summarize on-device</button>
-                <p>2–3 sentence summary, auto-title &amp; tags. Runs on Gemini Nano.</p>
+          <div class="preview-wrap reveal">
+            <div class="preview-card" id="preview-card">
+              <div class="preview-head">
+                <span class="traffic"><i></i><i></i><i></i></span>
+                <span class="preview-title">notewise — live preview</span>
+                <span class="preview-pill">◐ Live Preview Mode</span>
               </div>
-              <div class="ai-action">
-                <button id="research-btn" class="btn btn-cloud">☁ Deep research</button>
-                <p>Structured research brief: key ideas, background, open questions.</p>
-              </div>
-              <div class="ai-action">
-                <button id="quiz-btn" class="btn btn-cloud">? Quiz me</button>
-                <p>5 multiple-choice questions from this note, with answers.</p>
+              <div class="preview-body">
+                <div class="preview-col preview-raw">
+                  <p class="preview-label">Messy notes</p>
+                  <p class="preview-text" id="preview-raw-text"></p>
+                </div>
+                <div class="preview-arrow" aria-hidden="true">→</div>
+                <div class="preview-col preview-out">
+                  <p class="preview-label">Structured by Notewise</p>
+                  <div id="preview-out-lines"></div>
+                </div>
               </div>
             </div>
-            <div id="ai-output" class="ai-output" aria-live="polite">
-              <p class="ai-empty">Pick a note, then run one of the AI actions above. Results appear here.</p>
-            </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
-      <footer class="footer">
+      <!-- ============ BENTO ============ -->
+      <section class="section" id="features">
+        <h2 class="section-title reveal">Everything your notes should do. <span class="grad">Nothing they shouldn’t.</span></h2>
+        <p class="section-sub reveal">Four capabilities, one workspace. Every card below is live — hover, click, try it.</p>
+        <div class="bento">
+          <article class="bento-card bento-wide reveal">
+            <div class="bento-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z"/><path d="M19 15l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/></svg>
+            </div>
+            <h3>Smart Synthesis</h3>
+            <p>Raw paragraphs in, a tight 2–3 sentence summary out — plus an auto-title and topic tags. Runs on Gemini Nano on-device when available, Gemini in the cloud when it counts.</p>
+            <div class="mini-synth" aria-hidden="true">
+              <p class="mini-messy">“photosynthesis is how plants make food using sunlight water and carbon dioxide and it happens in leaves…”</p>
+              <p class="mini-arrow">↓ synthesized</p>
+              <p class="mini-clean"><strong>Summary:</strong> Plants convert light, water and CO₂ into glucose in their leaves. <span class="mini-tag">biology</span> <span class="mini-tag">energy</span></p>
+            </div>
+          </article>
+
+          <article class="bento-card reveal">
+            <div class="bento-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 9h8M8 13h5"/><circle cx="17" cy="16.5" r="1.6" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <h3>Flashcards / Quiz Gen</h3>
+            <p>Five multiple-choice questions from any note, checked right in the app. Try one:</p>
+            <div class="mini-quiz" id="mini-quiz">
+              <p class="mini-quiz-q">Which organelle runs photosynthesis?</p>
+              <div class="mini-quiz-opts">
+                <button type="button" data-correct="false">Mitochondrion</button>
+                <button type="button" data-correct="true">Chloroplast</button>
+                <button type="button" data-correct="false">Nucleus</button>
+              </div>
+              <p class="mini-quiz-feedback" id="mini-quiz-feedback"></p>
+            </div>
+          </article>
+
+          <article class="bento-card reveal">
+            <div class="bento-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            </div>
+            <h3>Export to Markdown / PDF</h3>
+            <p>One click copies or downloads your whole structured note — summary, takeaways, flashcards and research brief.</p>
+            <pre class="mini-code">## Summary
+Plants convert light, water
+and CO₂ into glucose…
+
+## Key takeaways
+- Light reactions split water
+- Calvin cycle fixes carbon</pre>
+            <button class="btn btn-glass btn-small" id="mini-copy-btn" type="button">Copy this snippet</button>
+          </article>
+
+          <article class="bento-card reveal">
+            <div class="bento-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+            </div>
+            <h3>Instant Search</h3>
+            <p>Every note is searchable the moment you type. Try it on the samples:</p>
+            <input class="mini-search" id="mini-search" type="text" placeholder="Search sample notes…" autocomplete="off" />
+            <ul class="mini-search-results" id="mini-search-results"></ul>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ PRESETS ============ -->
+      <section class="section" id="presets">
+        <h2 class="section-title reveal">One click. A full workspace, <span class="grad">instantly.</span></h2>
+        <p class="section-sub reveal">Three realistic datasets with pre-computed output — no waiting, no failures, even if the live AI is busy.</p>
+        <div class="preset-row" id="preset-row"></div>
+      </section>
+
+      <!-- ============ WORKSPACE ============ -->
+      <section class="section workspace-section" id="workspace">
+        <h2 class="section-title reveal">The workspace</h2>
+        <p class="section-sub reveal">Write or drop a note on the left. Structured knowledge appears on the right.</p>
+
+        <div class="workspace" id="workspace-shell">
+          <aside class="sidebar" id="sidebar" aria-label="Notes">
+            <div class="side-head">
+              <h3>Your notes</h3>
+              <button class="btn btn-ghost btn-small" id="sidebar-collapse-btn" type="button" title="Collapse sidebar">‹</button>
+            </div>
+            <input class="side-search" id="note-search" type="text" placeholder="Search notes…" autocomplete="off" />
+            <button class="btn btn-primary btn-block" id="new-note-btn" type="button">+ New note</button>
+            <ul id="notes-list" class="notes-list"></ul>
+            <div class="side-presets">
+              <p class="side-label">1-Click Samples</p>
+              <div id="side-preset-list"></div>
+            </div>
+            <p class="side-hint">Notes are stored on this device (localStorage), mirrored to Firestore when signed in.</p>
+          </aside>
+
+          <div class="ws-main">
+            <div class="ws-toolbar">
+              <button class="btn btn-ghost btn-small" id="sidebar-open-btn" type="button" title="Show notes">☰ Notes</button>
+              <input id="note-title" class="note-title-input" type="text" placeholder="Note title — leave blank and Nano will suggest one" autocomplete="off" />
+              <span class="ws-badge" id="ws-badge" title="Which AI engine produced the current output">◐ Live Preview</span>
+            </div>
+
+            <div class="ws-panes">
+              <div class="pane pane-editor" id="editor-pane">
+                <div class="pane-label">Raw notes <span class="pane-hint">Drop a .txt / .md file here, or <button type="button" class="link-btn" id="import-file-btn">import one</button></span></div>
+                <textarea
+                  id="note-body"
+                  class="note-body-input"
+                  placeholder="Paste a lecture, an article, meeting notes… anything. Then generate — on-device Nano, cloud Gemini, or a 1-click sample."
+                  spellcheck="true"
+                ></textarea>
+                <input type="file" id="import-file-input" accept=".txt,.md,text/plain,text/markdown" hidden />
+                <div class="editor-actions">
+                  <button id="generate-all-btn" class="btn btn-primary" type="button">✦ Generate all</button>
+                  <button id="summarize-btn" class="btn btn-device" type="button">✦ Summarize</button>
+                  <button id="research-btn" class="btn btn-cloud" type="button">☁ Deep research</button>
+                  <button id="quiz-btn" class="btn btn-cloud" type="button">? Quiz me</button>
+                </div>
+                <div class="editor-actions editor-actions-row2">
+                  <button id="save-note-btn" class="btn btn-ghost" type="button">Save note</button>
+                  <button id="delete-note-btn" class="btn btn-ghost" type="button">Delete</button>
+                  <span id="save-state" class="save-state"></span>
+                </div>
+                <div class="drop-overlay" id="drop-overlay">Drop a .txt / .md file to load it</div>
+              </div>
+
+              <div class="pane pane-output">
+                <div class="output-tabs" role="tablist" aria-label="AI output">
+                  <button class="output-tab active" data-tab="summary" role="tab" type="button">Summary</button>
+                  <button class="output-tab" data-tab="takeaways" role="tab" type="button">Key Takeaways</button>
+                  <button class="output-tab" data-tab="flashcards" role="tab" type="button">Flashcards</button>
+                  <button class="output-tab" data-tab="research" role="tab" type="button">Research</button>
+                </div>
+                <div class="output-actions">
+                  <button class="btn btn-glass btn-small" id="copy-tab-btn" type="button">⧉ Copy this tab</button>
+                  <button class="btn btn-glass btn-small" id="export-md-btn" type="button">↓ Export Markdown</button>
+                </div>
+                <div class="output-body" id="output-body" aria-live="polite">
+                  <div class="tab-panel active" data-panel="summary" id="panel-summary">
+                    <p class="ai-empty">Pick a note, then run one of the AI actions. Results appear here — with a badge that says exactly where they ran.</p>
+                  </div>
+                  <div class="tab-panel" data-panel="takeaways" id="panel-takeaways">
+                    <p class="ai-empty">Key takeaways appear here after you summarize or research a note.</p>
+                  </div>
+                  <div class="tab-panel" data-panel="flashcards" id="panel-flashcards">
+                    <p class="ai-empty">Flashcards appear here after you run “Quiz me”.</p>
+                  </div>
+                  <div class="tab-panel" data-panel="research" id="panel-research">
+                    <p class="ai-empty">The structured research brief appears here after “Deep research”.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p class="shortcuts-hint">Shortcuts: <kbd>Ctrl/⌘ + Enter</kbd> generate all · <kbd>Ctrl/⌘ + S</kbd> export Markdown · <kbd>Esc</kbd> close sidebar</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <p class="footer-brand">
+          <strong>Notewise</strong> — Turn messy notes into structured knowledge.
+        </p>
         <p>
-          Built with <strong>Firebase AI Logic</strong> hybrid inference — Gemini Nano on-device,
-          Gemini in the cloud. <span id="mode-note"></span>
+          Built by <strong>Rohit Rajput</strong> · Built with Firebase AI Logic (Gemini Nano on-device, Gemini in the cloud) ·
+          <a href="https://github.com/rjrajput-web3/notewise" target="_blank" rel="noopener">github.com/rjrajput-web3/notewise</a> · MIT licensed · #BuildHybridAI 2026
         </p>
-        <p class="footer-sub">
-          Notewise is an original project by Rohit Rajput, built for #BuildHybridAI 2026. MIT licensed.
-        </p>
-      </footer>
-    </div>
+        <p class="footer-sub" id="mode-note"></p>
+      </div>
+    </footer>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
