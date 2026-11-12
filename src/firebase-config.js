@@ -14,7 +14,7 @@
 export const firebaseConfig = {
   apiKey:
     import.meta.env.VITE_FIREBASE_API_KEY ||
-    "AIzaSyCgDdx3kb4u7YvNZwxIELo_yHXKr_TdzA8",
+    "AIzaSyDZVwuKXSWwsroz6ZMRnnlgoDSz45UwGxM",
   authDomain:
     import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
     "hybridai-smart-notes.firebaseapp.com",
