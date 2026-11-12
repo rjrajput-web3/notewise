@@ -5,7 +5,7 @@
  *  - Summarize uses HYBRID inference (InferenceMode.PREFER_ON_DEVICE):
  *    the Firebase AI Logic SDK runs the prompt on Gemini Nano in the browser
  *    when a local model is available and falls back to the cloud otherwise.
- *  - Deep research and Quiz use the CLOUD model (gemini-2.5-flash) via the
+ *  - Deep research and Quiz use the CLOUD model (gemini-3.8-flash) via the
  *    same SDK, because they need deeper reasoning than a small on-device
  *    model.
  *  - Every result reports its real inference source
@@ -20,7 +20,13 @@
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from "firebase/ai";
 import { summarizeDemo, researchDemo, quizDemo } from "./demo.js";
 
-const CLOUD_MODEL = "gemini-2.5-flash";
+// Cloud fallback model. gemini-2.5-flash was retired by Google for new
+// users (the API returned 404 "This model models/gemini-2.5-flash is no
+// longer available to new users" on 2026-11-13) and the error itself named
+// gemini-3.8-flash as the replacement. gemini-3.8-flash is Google's current
+// Flash-tier model on the Gemini Developer API (released 2026-09-02, free
+// tier available) — the same backend Firebase AI Logic uses here.
+const CLOUD_MODEL = "gemini-3.8-flash";
 
 const SUMMARIZE_PROMPT = `You are an on-device study assistant running on Gemini Nano.
 Summarize the note below in 2-3 short sentences, suggest a title of at most 8 words,
@@ -154,7 +160,7 @@ export class AIService {
       return {
         kind: "summary",
         source: source === "on_device" ? "on-device" : "cloud",
-        model: source === "on_device" ? "Gemini Nano (on-device)" : "Gemini 2.5 Flash (cloud fallback)",
+        model: source === "on_device" ? "Gemini Nano (on-device)" : "Gemini 3.8 Flash (cloud fallback)",
         latencyMs,
         data
       };
@@ -177,7 +183,7 @@ export class AIService {
       return {
         kind: "research",
         source: source === "on_device" ? "on-device" : "cloud",
-        model: "Gemini 2.5 Flash (cloud)",
+        model: "Gemini 3.8 Flash (cloud)",
         latencyMs,
         data: { markdown: raw }
       };
@@ -205,7 +211,7 @@ export class AIService {
       return {
         kind: "quiz",
         source: source === "on_device" ? "on-device" : "cloud",
-        model: "Gemini 2.5 Flash (cloud)",
+        model: "Gemini 3.8 Flash (cloud)",
         latencyMs,
         data: { questions }
       };
@@ -233,6 +239,16 @@ export class AIService {
         "Fix in the Firebase console: App Check → APIs → Firebase AI Logic API → set enforcement to 'Not enforced' " +
         "(or create a reCAPTCHA Enterprise site key and set VITE_APPCHECK_SITE_KEY). " +
         "Original error: " + msg
+      );
+    }
+    // Model retired: Google returns 404 "This model models/<name> is no
+    // longer available to new users" and names the replacement in the
+    // message. Say plainly that CLOUD_MODEL must be updated to the model
+    // the error names — no console step fixes this.
+    if (/404|no longer available|models\/gemini/i.test(msg)) {
+      return (
+        "The cloud model this app calls is no longer available: " + msg +
+        " Fix in code: update CLOUD_MODEL in src/ai.js to the replacement model named in the error, then redeploy."
       );
     }
     // AI Logic not yet enabled in the console surfaces as a 403 / failed-precondition.
