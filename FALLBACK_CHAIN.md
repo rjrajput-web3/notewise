@@ -13,7 +13,7 @@ https://notewiseapp.vercel.app (Vercel project `notewise`, team `rohit-3f05`)
 | # | Tier | What it is | Live status 2026-11-13 |
 |---|------|-----------|------------------------|
 | 1 | Firebase AI Logic | Hybrid inference: Gemini Nano on-device preferred, cloud model chain as fallback. Cloud chain: `gemini-3.5-flash` → `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite` → `gemini-3.6-flash` → `gemma-4-26b-a4b-it` → `gemini-3.8-flash` (last). | Models verified live via the Google AI Studio API (same Gemini Developer API backend). `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`, `gemma-4-26b-a4b-it` returned real text; `gemini-3.6-flash` returned real text (prose-wrapped JSON, parses OK); `gemini-3.8-flash` returns 503 "high demand" (kept last in case it recovers). |
-| 2 | `/api/llm` proxy | Vercel serverless (`api/llm.js`, `POST {task, prompt}` → `{text, provider, model, label, latencyMs}`). Tries OpenRouter `:free` → Groq. Keys server-side only. CORS open so other pipelines can reuse it. | Deployed and verified live: `POST /api/llm` returns HTTP 503 `{"error":"no_provider_available","detail":"no LLM provider key configured"}` in ~0.9s when no keys are set (skip path works). Returns real completions as soon as a key is set — not yet verified with a real key because no OpenRouter/Groq key is available yet. |
+| 2 | `/api/llm` proxy | Vercel serverless (`api/llm.js`, `POST {task, prompt}` → `{text, provider, model, label, latencyMs}`). Tries OpenRouter `:free` → Groq. Keys server-side only. CORS open so other pipelines can reuse it. | Deployed and verified live: `POST /api/llm` returns HTTP 503 `{"error":"no_provider_available","detail":"no LLM provider key configured"}` in ~0.9s when no keys are set (skip path works). CORRECTED 2026-11-13 ~14:40 IST: the shipped OpenRouter model list was stale — meta-llama/llama-3.3-70b-instruct:free and google/gemma-3-27b-it:free are BOTH 404 "unavailable for free" (OpenRouter rotated its free tier). Replaced with three models verified live with the user's own stored key: recursive/flint-v1.0:free, particle-ai/particle-1:free, baidu/ernie-5.5-flash-preview:free (each returned real text, finish_reason "stop", max_tokens 500). The key itself is VERIFIED working (stored as custom.openrouter; /api/v1/models returns 200, 434 models, 14 :free). The proxy tier still needs OPENROUTER_API_KEY set in Vercel env — the stored credential is not readable, so the user pastes the value into Vercel himself. |
 | 3 | Pollinations | Keyless client-side GET `https://text.pollinations.ai/<prompt>?model=openai`, plain-text reply. | VERIFIED LIVE: real JSON summary (title + 5 tags) in 9.4s for the actual Summarize prompt. Badge shown: `Cloud · Pollinations (openai)`. The OpenAI-compatible POST endpoint (`/openai/v1/chat/completions`) timed out at 60s in testing — do NOT use it; the GET endpoint is the working one. |
 | 4 | Demo mode | Local engine (`src/demo.js`). Badge: `◐ Live Preview Mode · Local preview`. | Verified locally (Playwright, 2026-11-13): Summarize, Research and Quiz all complete with the Live Preview badge and zero raw error text in the DOM when every live tier is unreachable. |
 
@@ -72,7 +72,7 @@ Vercel env. Never hardcode the key; never retry signup from a VM browser.
 | Var | Where | Status 2026-11-13 |
 |-----|-------|-------------------|
 | `GITHUB_MODELS_TOKEN` | Vercel (Production/Preview/Development) + local `.env` | REMOVED everywhere — service retired, see above. |
-| `OPENROUTER_API_KEY` | Vercel env | NOT SET. An OpenRouter browser task is recreating the `notewise-fallback` key; the user will capture its value during takeover. Set with `vercel env add OPENROUTER_API_KEY --environment production --sensitive` (repeat for preview/development) once the value is in hand via Secure Vault. |
+| `OPENROUTER_API_KEY` | Vercel env | NOT SET. An OpenRouter browser task is recreating the `notewise-fallback` key; the user will capture its value during takeover. KEY VERIFIED 2026-11-13 ~14:40 IST (stored as custom.openrouter; live /api/v1/models 200, 434 models, 14 :free; three :free completions returned real text). The stored value is NOT readable by design — the user pastes it into Vercel himself (production + preview + development) from his phone clipboard, or via `vercel env add OPENROUTER_API_KEY --environment production --sensitive` (repeat for preview/development) with the value he holds. |
 | `GROQ_API_KEY` | Vercel env | NOT SET. Pending the user's whitelisted account + key via Secure Vault. |
 | `VITE_FIREBASE_API_KEY` etc. | `src/firebase-config.js` (public client key, rotated 2026-11-13) | Live. Restricted to Firestore + Firebase AI Logic + Identity Toolkit APIs, referrers `*.vercel.app`. |
 
@@ -91,7 +91,7 @@ Every result shows its real source — the UI never claims live AI for a
 local preview:
 - `✦ On-device · Gemini Nano (on-device)`
 - `☁ Cloud · Gemini 3.5 Flash (cloud)` (or whichever Firebase model answered)
-- `☁ Cloud · OpenRouter (meta-llama/llama-3.3-70b-instruct:free)`
+- `☁ Cloud · OpenRouter (recursive/flint-v1.0:free)` (model list corrected 2026-11-13 — the llama-3.3-70b:free / gemma-3-27b-it:free slugs are dead)
 - `☁ Cloud · Groq (llama-3.3-70b-versatile)`
 - `☁ Cloud · Pollinations (openai)`
 - `◐ Live Preview Mode · Local preview` (demo engine — never live AI)

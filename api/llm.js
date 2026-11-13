@@ -19,6 +19,16 @@
  * The provider was removed from this proxy; do NOT re-add it without
  * re-verifying the endpoint serves real completions.
  *
+ * OPENROUTER :free MODELS — VERIFIED LIVE 2026-11-13 with the user's own
+ * key (via the stored custom.openrouter credential): the two models the
+ * first build shipped (meta-llama/llama-3.3-70b-instruct:free and
+ * google/gemma-3-27b-it:free) are BOTH 404 "unavailable for free" — OpenRouter
+ * rotated its free tier. The three models below each returned real visible
+ * text (finish_reason "stop") with max_tokens 500. NOTE: several :free
+ * models are reasoning models — with a tiny max_tokens budget they burn it
+ * all on thinking and return null content; the proxy's max_tokens 1500
+ * avoids that. Re-check /api/v1/models before swapping this list.
+ *
  * Response (success): { text, provider, model, latencyMs }
  * Response (all tiers failed / no keys): HTTP 503 { error, detail }
  *
@@ -40,8 +50,9 @@ const PROVIDERS = [
       {
         url: "https://openrouter.ai/api/v1/chat/completions",
         models: [
-          "meta-llama/llama-3.3-70b-instruct:free",
-          "google/gemma-3-27b-it:free",
+          "recursive/flint-v1.0:free",
+          "particle-ai/particle-1:free",
+          "baidu/ernie-5.5-flash-preview:free",
         ],
       },
     ],
