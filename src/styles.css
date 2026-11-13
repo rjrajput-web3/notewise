@@ -78,6 +78,10 @@ a:hover { color: #c7d2fe; }
 /* ---------- reveal on scroll ---------- */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out); }
 .reveal.in-view { opacity: 1; transform: none; }
+/* Section titles always render fully opaque: a mid-fade heading can misread
+   on small screens and in recordings ("your" reading as "uour"), so titles
+   never fade — they are crisp from the first frame. */
+.section-title.reveal { opacity: 1; transform: none; transition: none; }
 .reveal:nth-child(2) { transition-delay: 0.06s; }
 .reveal:nth-child(3) { transition-delay: 0.12s; }
 .reveal:nth-child(4) { transition-delay: 0.18s; }
