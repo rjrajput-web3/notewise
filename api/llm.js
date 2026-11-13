@@ -5,7 +5,7 @@
  *
  * Tries providers in order and returns the first real response:
  *   1. OpenRouter      (OPENROUTER_API_KEY) — :free models only
- *   2. Groq            (GROQ_API_KEY)       — llama-3.3-70b-versatile, then 8b-instant
+ *   2. Groq            (GROQ_API_KEY)       — gpt-oss-20b, then qwen3.8-27b
  * Any tier whose key is absent is skipped silently. Nothing here is ever
  * hardcoded: keys come from Vercel env vars only, never from client code
  * or git. Other pipelines can reuse this endpoint with any prompt.
@@ -28,6 +28,16 @@
  * models are reasoning models — with a tiny max_tokens budget they burn it
  * all on thinking and return null content; the proxy's max_tokens 1500
  * avoids that. Re-check /api/v1/models before swapping this list.
+ *
+ * GROQ MODELS — VERIFIED LIVE 2026-11-13 with the user's own key (via the
+ * stored custom.groq credential): the two models the first build shipped
+ * (llama-3.3-70b-versatile, llama-3.1-8b-instant) are BOTH 404
+ * "model_not_found" — Groq retired the Llama 3.1/3.3 chat models. The
+ * account's live list has 11 models; the two below each returned real
+ * visible text (finish_reason "stop") with max_tokens 500. NOTE: gpt-oss
+ * models are reasoning models — with a tiny max_tokens budget they burn it
+ * all on thinking and return empty content; the proxy's max_tokens 1500
+ * avoids that. Re-check /openai/v1/models before swapping this list.
  *
  * Response (success): { text, provider, model, latencyMs }
  * Response (all tiers failed / no keys): HTTP 503 { error, detail }
@@ -69,7 +79,7 @@ const PROVIDERS = [
     bases: [
       {
         url: "https://api.groq.com/openai/v1/chat/completions",
-        models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+        models: ["openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
       },
     ],
     headers: (key) => ({ Authorization: `Bearer ${key}` }),
