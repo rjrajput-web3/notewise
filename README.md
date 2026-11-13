@@ -14,15 +14,18 @@ Firebase AI Logic hybrid inference is for: the same app runs prompts
 2. **✦ Summarize on-device** — Gemini Nano (Firebase AI Logic,
    `InferenceMode.PREFER_ON_DEVICE`) writes a 2–3 sentence summary, suggests
    a title and tags. Fast, private, works offline.
-3. **☁ Deep research** — cloud Gemini (`gemini-3.8-flash`, `ONLY_IN_CLOUD`
-   via the same SDK) turns the note into a structured research brief: key
+3. **☁ Deep research** — cloud Gemini (verified-live model chain, see
+   `FALLBACK_CHAIN.md`) turns the note into a structured research brief: key
    ideas, background, connections, open questions.
 4. **? Quiz me** — cloud Gemini writes 5 multiple-choice questions from the
    note. Answers are checked in the app, with a one-line explanation.
 
 Every result carries a badge stating exactly where it ran — **On-device ·
-Gemini Nano**, **Cloud · Gemini 3.8 Flash**, or **Demo mode** — and the
-latency of the call.
+Gemini Nano**, **Cloud · Gemini 3.5 Flash**, **Cloud · Pollinations
+(openai)**, **Cloud · OpenRouter (…)** — or **Demo mode** — and the
+latency of the call. If every live tier is busy, the app falls back through
+a multi-provider chain (Firebase AI Logic → `/api/llm` proxy → Pollinations
+→ local demo) instead of showing an error. Full details: `FALLBACK_CHAIN.md`.
 
 ## How Firebase AI Logic is used (in code)
 
@@ -33,14 +36,18 @@ import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from "fireb
 
 const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });
 
-// On-device first, cloud fallback (summarize)
+// On-device first, cloud fallback (summarize) — cloud model chain is
+// gemini-3.5-flash -> gemini-3.5-flash-lite -> gemini-3.1-flash-lite ->
+// gemini-3.6-flash -> gemma-4-26b-a4b-it -> gemini-3.8-flash (all verified
+// live 2026-11-13; see FALLBACK_CHAIN.md — the 2.5/2.0/1.5-flash models
+// Google's error messages name are retired and return 404).
 const model = getGenerativeModel(ai, {
   mode: InferenceMode.PREFER_ON_DEVICE,
-  inCloudParams: { model: "gemini-3.8-flash" }
+  inCloudParams: { model: "gemini-3.5-flash" }
 });
 
 // Cloud only (deep research, quiz)
-const cloud = getGenerativeModel(ai, { model: "gemini-3.8-flash" });
+const cloud = getGenerativeModel(ai, { model: "gemini-3.5-flash" });
 const result = await model.generateContent({ contents: [...] });
 const where = result.response.inferenceSource; // "on_device" | "in_cloud"
 ```
@@ -112,14 +119,17 @@ src/
 Note text
    │
    ├─ Summarize ──► Firebase AI Logic, PREFER_ON_DEVICE ──► Gemini Nano
-   │                    (cloud fallback: Gemini 3.8 Flash)      or demo engine
+   │                    (cloud chain: Gemini 3.5 Flash -> 3.5 Flash-Lite
+   │                     -> 3.1 Flash-Lite -> 3.6 Flash -> Gemma 4 26B
+   │                     -> 3.8 Flash; then /api/llm proxy, then
+   │                     Pollinations)                          or demo engine
    │
-   ├─ Deep research ─► Firebase AI Logic, cloud model ──► Gemini 3.8 Flash
+   ├─ Deep research ─► Firebase AI Logic, cloud chain ──► same fallbacks
    │
-   └─ Quiz ─────────► Firebase AI Logic, cloud model ──► Gemini 3.8 Flash
+   └─ Quiz ─────────► Firebase AI Logic, cloud chain ──► same fallbacks
                         │
                         ▼
-              Result badge: on-device / cloud / demo
+              Result badge: on-device / cloud (exact provider + model) / demo
 ```
 
 ## What was built during the submission period

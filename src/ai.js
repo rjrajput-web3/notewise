@@ -1,38 +1,65 @@
 /**
- * AI service for Notewise — Firebase AI Logic hybrid inference.
+ * AI service for Notewise — multi-provider fallback chain.
  *
- * This is the real integration, not a stub:
- *  - Summarize uses HYBRID inference (InferenceMode.PREFER_ON_DEVICE):
- *    the Firebase AI Logic SDK runs the prompt on Gemini Nano in the browser
- *    when a local model is available and falls back to the cloud otherwise.
- *  - Deep research and Quiz use the CLOUD model via the same SDK, because
- *    they need deeper reasoning than a small on-device model.
- *  - Every result reports its real inference source
- *    (response.inferenceSource: "on_device" or "in_cloud").
+ * Tier order (first real response wins):
+ *   1. Firebase AI Logic — hybrid inference (Gemini Nano on-device preferred,
+ *      cloud fallback). Cloud model chain, tried in order (all verified live
+ *      2026-11-13 via the Google AI Studio API, same Gemini Developer API
+ *      backend): gemini-3.5-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite,
+ *      gemini-3.6-flash, gemma-4-26b-a4b-it, gemini-3.8-flash (last — it exists
+ *      but returns 503 "high demand" right now; kept in case it recovers).
+ *      The order the user originally asked for — gemini-2.5-flash ->
+ *      gemini-2.0-flash -> gemini-1.5-flash -> gemma-3-27b-it — is RETIRED:
+ *      every one of them returns 404 "no longer available" (tested live
+ *      2026-11-13). They are NOT in the chain; the models above are their
+ *      live successors.
+ *   2. /api/llm proxy (Vercel serverless, keys server-side only) —
+ *      OpenRouter :free -> Groq. Any tier without a key is skipped.
+ *      GitHub Models was REMOVED from this proxy: GitHub retired the whole
+ *      service on 2026-07-30 and models.github.ai now answers every request
+ *      with a bare "OK" stub (verified from three networks 2026-11-13).
+ *      See api/llm.js and FALLBACK_CHAIN.md.
+ *   3. Pollinations (keyless, client-side GET) — plain-text OpenAI-compatible
+ *      endpoint. The POST chat-completions endpoint timed out in testing
+ *      (60s), so the simple GET endpoint is used.
+ *   4. Local demo engine — labelled "Live Preview Mode", never live AI.
  *
  * ZERO-FAILURE GUARANTEE (for judges and demos):
- *  - Every cloud call runs through retry with exponential backoff AND a
- *    model fallback chain. A transient 500 / 503 / 429 ("model busy") never
- *    reaches the user as an error.
- *  - If the live API is still unavailable after retries, the call falls
- *    back to the local demo engine and the result is labelled
- *    "Live Preview Mode" — a local preview, never presented as live AI.
+ *  - A transient 500 / 503 / 429 ("model busy") never reaches the user as
+ *    an error: the chain just moves to the next model / tier.
+ *  - If every live tier is unavailable, the call falls back to the local
+ *    demo engine and the result is labelled "Live Preview Mode".
  *  - Raw API error text NEVER reaches the DOM: the user-facing fallback
  *    reason is always a fixed friendly string; the raw error goes only to
  *    console.warn for debugging.
+ *  - Every result reports its real source: "on-device", "cloud" (with the
+ *    exact provider + model, e.g. "GitHub Models (gpt-4o-mini)"), or demo.
  */
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from "firebase/ai";
 import { summarizeDemo, researchDemo, quizDemo } from "./demo.js";
 
-// Cloud model chain, tried in order. gemini-2.5-flash was retired by Google
-// for new users (the API returned 404 "This model models/gemini-2.5-flash is
-// no longer available to new users" on 2026-11-13) and the error itself named
-// gemini-3.8-flash as the replacement. gemini-3.8-flash is Google's current
-// Flash-tier model on the Gemini Developer API (released 2026-09-02, free
-// tier available) — the same backend Firebase AI Logic uses here.
-// gemini-2.0-flash is the fallback if the primary model is busy or retired.
-const CLOUD_MODELS = ["gemini-3.8-flash", "gemini-2.0-flash"];
+// Cloud model chain, tried in order. Only models that returned real text in
+// live tests on 2026-11-13 are listed. gemini-3.8-flash is last: it exists
+// but consistently returns 503 "high demand" at the moment.
+const CLOUD_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3.6-flash",
+  "gemma-4-26b-a4b-it",
+  "gemini-3.8-flash",
+];
 const PRIMARY_MODEL = CLOUD_MODELS[0];
+
+// Human-readable labels for the Firebase cloud models (badges show these).
+const MODEL_LABELS = {
+  "gemini-3.5-flash": "Gemini 3.5 Flash",
+  "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
+  "gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite",
+  "gemini-3.6-flash": "Gemini 3.6 Flash",
+  "gemma-4-26b-a4b-it": "Gemma 4 26B",
+  "gemini-3.8-flash": "Gemini 3.8 Flash",
+};
 
 const SUMMARIZE_PROMPT = `You are an on-device study assistant running on Gemini Nano.
 Summarize the note below in 2-3 short sentences, suggest a title of at most 8 words,
@@ -65,8 +92,8 @@ Create exactly 5 multiple-choice questions based ONLY on the note below.
 Each question must have 4 options and exactly one correct answer.
 Reply with JSON ONLY, no markdown fences, no extra text:
 [{"q": "...", "options": ["...", "...", "...", "..."], "answer": 0, "why": "one short sentence"}]
-"answer" is the index (0-3) of the correct option. Do not invent facts that are
-not in the note.
+"answer" is the index (0-3) of the correct option. Do not invent facts that
+are not in the note.
 
 NOTE:
 `;
@@ -162,15 +189,17 @@ export class AIService {
   }
 
   /**
-   * Generate with exponential backoff + model fallback chain.
-   * `buildModel` receives a model name and returns a generative model.
+   * Generate with the Firebase model chain. `buildModel` receives a model
+   * name and returns a generative model. One attempt per model: a busy /
+   * retired model is skipped immediately and the chain moves on — the
+   * proxy and Pollinations tiers behind this one are the retry.
    * Returns { text, source, latencyMs, modelName }.
-   * Throws the last error only after every model and retry is exhausted.
+   * Throws the last error only after every model is exhausted.
    */
-  async _generateResilient(buildModel, prompt, timeoutMs) {
+  async _generateResilient(buildModel, prompt, timeoutMs, maxAttempts = 1) {
     let lastErr = null;
     for (const name of CLOUD_MODELS) {
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
           const out = await this._generateOnce(buildModel(name), prompt, timeoutMs);
           return { ...out, modelName: name };
@@ -187,54 +216,127 @@ export class AIService {
   }
 
   /**
-   * Summarize on-device (Nano) with cloud fallback.
+   * Tier 2 — the /api/llm serverless proxy (GitHub Models -> OpenRouter
+   * :free -> Groq). Returns { text, provider, model, label }.
+   * Throws if the proxy is unreachable, returns no provider, or returns
+   * empty text.
+   */
+  async _tryProxy(task, prompt) {
+    const res = await fetch("/api/llm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task, prompt }),
+      signal: AbortSignal.timeout(90000),
+    });
+    if (!res.ok) {
+      throw new Error(`proxy HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (!data || typeof data.text !== "string" || !data.text.trim()) {
+      throw new Error("proxy returned empty text");
+    }
+    return data;
+  }
+
+  /**
+   * Tier 3 — Pollinations, keyless plain-text endpoint (GET). The
+   * OpenAI-compatible POST endpoint timed out in testing (60s), so the
+   * simple GET endpoint is used. Returns the raw text.
+   */
+  async _tryPollinations(prompt) {
+    const url = "https://text.pollinations.ai/" + encodeURIComponent(prompt) + "?model=openai";
+    const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) {
+      throw new Error(`pollinations HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    if (!text.trim()) throw new Error("pollinations returned empty text");
+    return text;
+  }
+
+  /**
+   * Run the full fallback chain for one generation.
+   * `buildModel` receives a model name and returns a Firebase generative
+   * model; `task` names the job for the proxy tier.
+   * Returns { text, source, model, latencyMs } — source is "on-device" or
+   * "cloud", model is the exact provider + model label for the badge.
+   * Throws only when every live tier has failed.
+   */
+  async _generateWithFallbacks(task, buildModel, prompt, timeoutMs) {
+    const started = Date.now();
+    // Tier 1 — Firebase AI Logic (on-device Nano preferred, cloud chain).
+    if (this.ai) {
+      try {
+        const out = await this._generateResilient(buildModel, prompt, timeoutMs, 1);
+        const onDevice = out.source === "on_device";
+        return {
+          text: out.text,
+          source: onDevice ? "on-device" : "cloud",
+          model: onDevice
+            ? "Gemini Nano (on-device)"
+            : `${MODEL_LABELS[out.modelName] || out.modelName} (cloud)`,
+          latencyMs: Date.now() - started,
+        };
+      } catch (err) {
+        console.warn("[notewise] Firebase tier failed, trying proxy:", err);
+      }
+    }
+    // Tier 2 — /api/llm proxy (GitHub Models -> OpenRouter :free -> Groq).
+    try {
+      const p = await this._tryProxy(task, prompt);
+      return {
+        text: p.text,
+        source: "cloud",
+        model: p.label || `${p.provider} (${p.model})`,
+        latencyMs: Date.now() - started,
+      };
+    } catch (err) {
+      console.warn("[notewise] proxy tier failed, trying Pollinations:", err);
+    }
+    // Tier 3 — Pollinations (keyless).
+    const text = await this._tryPollinations(prompt);
+    return {
+      text,
+      source: "cloud",
+      model: "Pollinations (openai)",
+      latencyMs: Date.now() - started,
+    };
+  }
+
+  /**
+   * Summarize on-device (Nano) with cloud fallback, then proxy tiers.
    * Returns { kind, source, model, latencyMs, data, fallbackReason? }
    */
   async summarize(text) {
-    if (!this.ai) {
-      return { ...summarizeDemo(text), fallbackReason: this._previewReason() };
-    }
     try {
-      const { text: raw, source, latencyMs, modelName } = await this._generateResilient(
+      const { text: raw, source, model, latencyMs } = await this._generateWithFallbacks(
+        "summarize",
         (name) => this._hybridModel(name),
         SUMMARIZE_PROMPT + text,
         60000
       );
       const parsed = safeJsonParse(raw);
       const data = parsed || { summary: raw, title: "", tags: [] };
-      const onDevice = source === "on_device";
-      return {
-        kind: "summary",
-        source: onDevice ? "on-device" : "cloud",
-        model: onDevice
-          ? "Gemini Nano (on-device)"
-          : modelName === "gemini-3.8-flash"
-            ? "Gemini 3.8 Flash (cloud fallback)"
-            : `${modelName} (cloud fallback)`,
-        latencyMs,
-        data
-      };
+      return { kind: "summary", source, model, latencyMs, data };
     } catch (err) {
       console.warn("[notewise] summarize fell back to local preview:", err);
       return { ...summarizeDemo(text), fallbackReason: this._previewReason() };
     }
   }
 
-  /** Deep research brief — cloud Gemini. */
+  /** Deep research brief — cloud Gemini, then proxy tiers. */
   async research(text) {
-    if (!this.ai) {
-      return { ...researchDemo(text), fallbackReason: this._previewReason() };
-    }
     try {
-      const { text: raw, source, latencyMs, modelName } = await this._generateResilient(
+      const { text: raw, source, model, latencyMs } = await this._generateWithFallbacks(
+        "research",
         (name) => this._cloudModel(name),
         RESEARCH_PROMPT + text,
         90000
       );
       return {
         kind: "research",
-        source: source === "on_device" ? "on-device" : "cloud",
-        model: modelName === "gemini-3.8-flash" ? "Gemini 3.8 Flash (cloud)" : `${modelName} (cloud)`,
+        source,
+        model,
         latencyMs,
         data: { markdown: raw }
       };
@@ -244,13 +346,11 @@ export class AIService {
     }
   }
 
-  /** 5-question quiz — cloud Gemini. */
+  /** 5-question quiz — cloud Gemini, then proxy tiers. */
   async quiz(text) {
-    if (!this.ai) {
-      return { ...quizDemo(text), fallbackReason: this._previewReason() };
-    }
     try {
-      const { text: raw, source, latencyMs, modelName } = await this._generateResilient(
+      const { text: raw, source, model, latencyMs } = await this._generateWithFallbacks(
+        "quiz",
         (name) => this._cloudModel(name),
         QUIZ_PROMPT + text,
         90000
@@ -262,8 +362,8 @@ export class AIService {
       }
       return {
         kind: "quiz",
-        source: source === "on_device" ? "on-device" : "cloud",
-        model: modelName === "gemini-3.8-flash" ? "Gemini 3.8 Flash (cloud)" : `${modelName} (cloud)`,
+        source,
+        model,
         latencyMs,
         data: { questions }
       };

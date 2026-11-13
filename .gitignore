@@ -9,3 +9,6 @@ smoke-test.png
 tmp/
 
 audit-*.png
+.vercel
+.env*
+.vercel/
