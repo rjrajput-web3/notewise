@@ -63,7 +63,7 @@ matching provider in `api/llm.js`.
 Signup is blocked server-side (`signup_blocked`) in the cloud browser AND
 in the user's own phone browser — the block is account-side at Groq. The
 user is getting the account whitelisted via GitHub OAuth / Groq Support.
-The proxy already has a Groq tier (`llama-3.3-70b-versatile`,
+The proxy already has a Groq tier (`openai/gpt-oss-20b`,
 `llama-3.1-8b-instant`) that activates the moment `GROQ_API_KEY` is set in
 Vercel env. Never hardcode the key; never retry signup from a VM browser.
 
@@ -73,7 +73,7 @@ Vercel env. Never hardcode the key; never retry signup from a VM browser.
 |-----|-------|-------------------|
 | `GITHUB_MODELS_TOKEN` | Vercel (Production/Preview/Development) + local `.env` | REMOVED everywhere — service retired, see above. |
 | `OPENROUTER_API_KEY` | Vercel env | NOT SET. An OpenRouter browser task is recreating the `notewise-fallback` key; the user will capture its value during takeover. KEY VERIFIED 2026-11-13 ~14:40 IST (stored as custom.openrouter; live /api/v1/models 200, 434 models, 14 :free; three :free completions returned real text). The stored value is NOT readable by design — the user pastes it into Vercel himself (production + preview + development) from his phone clipboard, or via `vercel env add OPENROUTER_API_KEY --environment production --sensitive` (repeat for preview/development) with the value he holds. |
-| `GROQ_API_KEY` | Vercel env | NOT SET. Pending the user's whitelisted account + key via Secure Vault. |
+| `GROQ_API_KEY` | Vercel env | KEY VERIFIED 2026-11-13 ~14:47 IST (stored as custom.groq; created from his second account — xyzcryp0@gmail.com is signup_blocked account-side, trace ef628e481717386300018bfb92654274. Live /openai/v1/models 200, 11 models; gpt-oss-20b + qwen3.8-27b returned real text at max_tokens 500). NOT SET in Vercel yet — stored value is not readable, user pastes it into Vercel himself. Pending the user's whitelisted account + key via Secure Vault. |
 | `VITE_FIREBASE_API_KEY` etc. | `src/firebase-config.js` (public client key, rotated 2026-11-13) | Live. Restricted to Firestore + Firebase AI Logic + Identity Toolkit APIs, referrers `*.vercel.app`. |
 
 ## Reusable endpoint contract
@@ -92,7 +92,7 @@ local preview:
 - `✦ On-device · Gemini Nano (on-device)`
 - `☁ Cloud · Gemini 3.5 Flash (cloud)` (or whichever Firebase model answered)
 - `☁ Cloud · OpenRouter (recursive/flint-v1.0:free)` (model list corrected 2026-11-13 — the llama-3.3-70b:free / gemma-3-27b-it:free slugs are dead)
-- `☁ Cloud · Groq (llama-3.3-70b-versatile)`
+- `☁ Cloud · Groq (openai/gpt-oss-20b)` (model list corrected 2026-11-13 — llama-3.3-70b-versatile / llama-3.1-8b-instant are 404 model_not_found on Groq)
 - `☁ Cloud · Pollinations (openai)`
 - `◐ Live Preview Mode · Local preview` (demo engine — never live AI)
 
